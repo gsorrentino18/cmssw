@@ -74,6 +74,7 @@ private:
   MonitorElement* meHitTvsEta_[4];
 
   MonitorElement* meCluTime_[4];
+  MonitorElement* meCluTimeErr_[4];
   MonitorElement* meCluEnergy_[4];
   MonitorElement* meCluPhi_[4];
   MonitorElement* meCluEta_[4];
@@ -248,6 +249,7 @@ void EtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
 
       meCluEnergy_[idet]->Fill(cluster.energy());
       meCluTime_[idet]->Fill(cluster.time());
+      meCluTimeErr_[idet]->Fill(cluster.timeError());
       meCluPhi_[idet]->Fill(global_point.phi());
       meCluEta_[idet]->Fill(global_point.eta());
       meCluOccupancy_[idet]->Fill(global_point.x(), global_point.y(), weight);
@@ -509,6 +511,12 @@ void EtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   meCluTime_[2] =
       ibook.book1D("EtlCluTimeZposD1", "ETL cluster ToA (+Z, Single(topo1D)/First(topo2D) Disk);ToA [ns]", 250, 0, 25);
   meCluTime_[3] = ibook.book1D("EtlCluTimeZposD2", "ETL cluster ToA (+Z, Second Disk);ToA [ns]", 250, 0, 25);
+  meCluTimeErr_[0] =
+      ibook.book1D("EtlCluTimeErrZnegD1", "ETL cluster sigma(ToA) (-Z, Single(topo1D)/First(topo2D) Disk);ToA [ns]", 100, 0, 0.1);
+  meCluTimeErr_[1] = ibook.book1D("EtlCluTimeErrZnegD2", "ETL cluster sigma(ToA) (-Z, Second Disk);ToA [ns]", 100, 0, 0.1);
+  meCluTimeErr_[2] =
+      ibook.book1D("EtlCluTimeErrZposD1", "ETL cluster sigma(ToA) (+Z, Single(topo1D)/First(topo2D) Disk);ToA [ns]", 100, 0, 0.1);
+  meCluTimeErr_[3] = ibook.book1D("EtlCluTimeErrZposD2", "ETL cluster sigma(ToA) (+Z, Second Disk);ToA [ns]", 100, 0, 0.1);
   meCluEnergy_[0] = ibook.book1D(
       "EtlCluEnergyZnegD1", "ETL cluster energy (-Z, Single(topo1D)/First(topo2D) Disk);E_{RECO} [MeV]", 100, 0, 10);
   meCluEnergy_[1] =

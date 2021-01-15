@@ -101,6 +101,7 @@ private:
   MonitorElement* meEresvsE_;
 
   MonitorElement* meCluTime_;
+  MonitorElement* meCluTimeErr_;
   MonitorElement* meCluEnergy_;
   MonitorElement* meCluPhi_;
   MonitorElement* meCluEta_;
@@ -243,6 +244,7 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
 
       meCluEnergy_->Fill(cluster.energy());
       meCluTime_->Fill(cluster.time());
+      meCluTimeErr_->Fill(cluster.timeError());
       meCluPhi_->Fill(global_point.phi());
       meCluEta_->Fill(global_point.eta());
       meCluZvsPhi_->Fill(global_point.z(), global_point.phi());
@@ -299,6 +301,7 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   meEresvsE_ = ibook.bookProfile(
       "BtlEresvsE", "BTL energy resolution vs E;E_{SIM} [MeV];E_{RECO}-E_{SIM} [MeV]", 50, 0., 20., 0., 100.);
   meCluTime_ = ibook.book1D("BtlCluTime", "BTL cluster time ToA;ToA [ns]", 250, 0, 25);
+  meCluTimeErr_ = ibook.book1D("BtlCluTimeErr", "BTL cluster time ToA error; sigma(ToA) [ns]", 100, 0, 0.1);
   meCluEnergy_ = ibook.book1D("BtlCluEnergy", "BTL cluster energy;E_{RECO} [MeV]", 100, 0, 20);
   meCluPhi_ = ibook.book1D("BtlCluPhi", "BTL cluster #phi;#phi_{RECO} [rad]", 144, -3.2, 3.2);
   meCluEta_ = ibook.book1D("BtlCluEta", "BTL cluster #eta;#eta_{RECO}", 100, -1.6, 1.6);
