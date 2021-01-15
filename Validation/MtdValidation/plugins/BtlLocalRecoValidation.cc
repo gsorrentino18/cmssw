@@ -76,6 +76,7 @@ private:
 
   MonitorElement* meHitEnergy_;
   MonitorElement* meHitTime_;
+  MonitorElement* meHitTimeErr_;
 
   MonitorElement* meOccupancy_;
 
@@ -184,6 +185,7 @@ void BtlLocalRecoValidation::analyze(const edm::Event& iEvent, const edm::EventS
 
     meHitEnergy_->Fill(recHit.energy());
     meHitTime_->Fill(recHit.time());
+    meHitTimeErr_->Fill(recHit.timeError());
     meHitLongPos_->Fill(recHit.position());
     meHitLongPosErr_->Fill(recHit.positionError());
 
@@ -265,6 +267,7 @@ void BtlLocalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
 
   meHitEnergy_ = ibook.book1D("BtlHitEnergy", "BTL RECO hits energy;E_{RECO} [MeV]", 100, 0., 20.);
   meHitTime_ = ibook.book1D("BtlHitTime", "BTL RECO hits ToA;ToA_{RECO} [ns]", 100, 0., 25.);
+  meHitTimeErr_ = ibook.book1D("BtlHitTimeErr", "BTL RECO hits sigma(ToA);ToA_{RECO} [ns]", 100, 0., 0.1);
 
   meOccupancy_ = ibook.book2D(
       "BtlOccupancy", "BTL RECO hits occupancy;Z_{RECO} [cm]; #phi_{RECO} [rad]", 65, -260., 260., 126, -3.2, 3.2);
