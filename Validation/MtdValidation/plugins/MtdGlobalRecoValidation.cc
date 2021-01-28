@@ -53,6 +53,7 @@ private:
   edm::EDGetTokenT<std::vector<reco::Vertex>> RecVertexToken_;
 
   MonitorElement* meBTLTrackRPTime_;
+  MonitorElement* meBTLTrackRPTimeErr_;
   MonitorElement* meBTLTrackEffEtaTot_;
   MonitorElement* meBTLTrackEffPhiTot_;
   MonitorElement* meBTLTrackEffPtTot_;
@@ -61,6 +62,7 @@ private:
   MonitorElement* meBTLTrackEffPtMtd_;
 
   MonitorElement* meETLTrackRPTime_[4];
+  MonitorElement* meETLTrackRPTimeErr_[4];
   MonitorElement* meETLTrackNumHits_[4];
   MonitorElement* meETLTrackEffEtaTot_[2];
   MonitorElement* meETLTrackEffPhiTot_[2];
@@ -140,6 +142,7 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
         meBTLTrackEffPhiMtd_->Fill(track.phi());
         meBTLTrackEffPtMtd_->Fill(track.pt());
         meBTLTrackRPTime_->Fill(track.t0());
+        meBTLTrackRPTimeErr_->Fill(track.t0Error());
       }
     }
 
@@ -173,21 +176,25 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
             if ((ETLHit.zside() == -1) && (ETLHit.nDisc() == 1)) {
               MTDEtlZnegD1 = true;
               meETLTrackRPTime_[0]->Fill(track.t0());
+              meETLTrackRPTimeErr_[0]->Fill(track.t0Error());
               numMTDEtlvalidhits++;
             }
             if ((ETLHit.zside() == -1) && (ETLHit.nDisc() == 2)) {
               MTDEtlZnegD2 = true;
               meETLTrackRPTime_[1]->Fill(track.t0());
+              meETLTrackRPTimeErr_[1]->Fill(track.t0Error());
               numMTDEtlvalidhits++;
             }
             if ((ETLHit.zside() == 1) && (ETLHit.nDisc() == 1)) {
               MTDEtlZposD1 = true;
               meETLTrackRPTime_[2]->Fill(track.t0());
+              meETLTrackRPTimeErr_[2]->Fill(track.t0Error());
               numMTDEtlvalidhits++;
             }
             if ((ETLHit.zside() == 1) && (ETLHit.nDisc() == 2)) {
               MTDEtlZposD2 = true;
               meETLTrackRPTime_[3]->Fill(track.t0());
+              meETLTrackRPTimeErr_[3]->Fill(track.t0Error());
               numMTDEtlvalidhits++;
             }
           }
@@ -196,11 +203,13 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
             if (ETLHit.zside() == -1) {
               MTDEtlZnegD1 = true;
               meETLTrackRPTime_[0]->Fill(track.t0());
+              meETLTrackRPTimeErr_[0]->Fill(track.t0Error());
               numMTDEtlvalidhits++;
             }
             if (ETLHit.zside() == 1) {
               MTDEtlZposD1 = true;
               meETLTrackRPTime_[2]->Fill(track.t0());
+              meETLTrackRPTimeErr_[2]->Fill(track.t0Error());
               numMTDEtlvalidhits++;
             }
           }
@@ -247,6 +256,7 @@ void MtdGlobalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
 
   // histogram booking
   meBTLTrackRPTime_ = ibook.book1D("TrackBTLRPTime", "Track t0 with respect to R.P.;t0 [ns]", 100, -1, 3);
+  meBTLTrackRPTimeErr_ = ibook.book1D("TrackBTLRPTimeErr", "Track t0Error with respect to R.P.;t0 [ns]", 100, 0, 0.5);
   meBTLTrackEffEtaTot_ = ibook.book1D("TrackBTLEffEtaTot", "Track efficiency vs eta (Tot);#eta_{RECO}", 100, -1.6, 1.6);
   meBTLTrackEffPhiTot_ =
       ibook.book1D("TrackBTLEffPhiTot", "Track efficiency vs phi (Tot);#phi_{RECO} [rad]", 100, -3.2, 3.2);
@@ -263,6 +273,14 @@ void MtdGlobalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
       ibook.book1D("TrackETLRPTimeZposD1", "Track t0 with respect to R.P. (+Z, First Disk);t0 [ns]", 100, -1, 3);
   meETLTrackRPTime_[3] =
       ibook.book1D("TrackETLRPTimeZposD2", "Track t0 with respect to R.P. (+Z, Second Disk);t0 [ns]", 100, -1, 3);
+  meETLTrackRPTimeErr_[0] = ibook.book1D(
+      "TrackETLRPTimeErrZnegD1", "Track t0Error with respect to R.P. (-Z, First Disk);t0 [ns]", 100, 0, 0.5);
+  meETLTrackRPTimeErr_[1] = ibook.book1D(
+      "TrackETLRPTimeErrZnegD2", "Track t0Error with respect to R.P. (-Z, Second Disk);t0 [ns]", 100, 0, 0.5);
+  meETLTrackRPTimeErr_[2] = ibook.book1D(
+      "TrackETLRPTimeErrZposD1", "Track t0Error with respect to R.P. (+Z, First Disk);t0 [ns]", 100, 0, 0.5);
+  meETLTrackRPTimeErr_[3] = ibook.book1D(
+      "TrackETLRPTimeErrZposD2", "Track t0Error with respect to R.P. (+Z, Second Disk);t0 [ns]", 100, 0, 0.5);
   meETLTrackEffEtaTot_[0] =
       ibook.book1D("TrackETLEffEtaTotZneg", "Track efficiency vs eta (Tot) (-Z);#eta_{RECO}", 100, -3.2, -1.4);
   meETLTrackEffEtaTot_[1] =
