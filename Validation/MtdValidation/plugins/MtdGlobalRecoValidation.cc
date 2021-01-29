@@ -68,6 +68,7 @@ private:
 
   MonitorElement* meBTLTrackRPTime_;
   MonitorElement* meBTLTrackRPTimeErr_;
+  MonitorElement* meBTLTrackRPBestTimeErr_;
   MonitorElement* meBTLTrackEffEtaTot_;
   MonitorElement* meBTLTrackEffPhiTot_;
   MonitorElement* meBTLTrackEffPtTot_;
@@ -77,6 +78,7 @@ private:
 
   MonitorElement* meETLTrackRPTime_[4];
   MonitorElement* meETLTrackRPTimeErr_[4];
+  MonitorElement* meETLTrackRPBestTimeErr_[4];
   MonitorElement* meETLTrackNumHits_[4];
   MonitorElement* meETLTrackEffEtaTot_[2];
   MonitorElement* meETLTrackEffPhiTot_[2];
@@ -151,15 +153,16 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
   unsigned int index = 0;
   // --- Loop over all RECO tracks ---
   for (const auto& trackGen : *GenRecTrackHandle) {
-
-    const reco::TrackRef trackref(iEvent.getHandle(GenRecTrackToken_),index);
+    const reco::TrackRef trackref(iEvent.getHandle(GenRecTrackToken_), index);
     index++;
 
-    if (trackAssoc[trackref] == -1 ) { LogWarning("globalReco") << "Extended track not associated"; continue; }
+    if (trackAssoc[trackref] == -1) {
+      LogWarning("globalReco") << "Extended track not associated";
+      continue;
+    }
 
     const reco::TrackRef mtdTrackref = reco::TrackRef(iEvent.getHandle(MTDRecTrackToken_), trackAssoc[trackref]);
     const reco::Track track = *mtdTrackref;
-
 
     if (track.pt() < trackMinEnergy_)
       continue;
@@ -185,13 +188,18 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
 
       // --- keeping only tracks with last hit in MTD ---
       if (MTDBtl == true) {
-    edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
-    edm::LogWarning("globalReco") << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref] << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
+        if (sigmat0safe[trackref] > 0.0251) {
+          edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
+          edm::LogWarning("globalReco") << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " "
+                                        << sigmat0safe[trackref] << " " << probPi[trackref] << " " << probK[trackref]
+                                        << " " << probP[trackref];
+        }
         meBTLTrackEffEtaMtd_->Fill(track.eta());
         meBTLTrackEffPhiMtd_->Fill(track.phi());
         meBTLTrackEffPtMtd_->Fill(track.pt());
         meBTLTrackRPTime_->Fill(track.t0());
         meBTLTrackRPTimeErr_->Fill(track.t0Error());
+        meBTLTrackRPBestTimeErr_->Fill(sigmat0safe[trackref]);
       }
     }
 
@@ -226,24 +234,28 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
               MTDEtlZnegD1 = true;
               meETLTrackRPTime_[0]->Fill(track.t0());
               meETLTrackRPTimeErr_[0]->Fill(track.t0Error());
+              meETLTrackRPBestTimeErr_[0]->Fill(sigmat0safe[trackref]);
               numMTDEtlvalidhits++;
             }
             if ((ETLHit.zside() == -1) && (ETLHit.nDisc() == 2)) {
               MTDEtlZnegD2 = true;
               meETLTrackRPTime_[1]->Fill(track.t0());
               meETLTrackRPTimeErr_[1]->Fill(track.t0Error());
+              meETLTrackRPBestTimeErr_[1]->Fill(sigmat0safe[trackref]);
               numMTDEtlvalidhits++;
             }
             if ((ETLHit.zside() == 1) && (ETLHit.nDisc() == 1)) {
               MTDEtlZposD1 = true;
               meETLTrackRPTime_[2]->Fill(track.t0());
               meETLTrackRPTimeErr_[2]->Fill(track.t0Error());
+              meETLTrackRPBestTimeErr_[2]->Fill(sigmat0safe[trackref]);
               numMTDEtlvalidhits++;
             }
             if ((ETLHit.zside() == 1) && (ETLHit.nDisc() == 2)) {
               MTDEtlZposD2 = true;
               meETLTrackRPTime_[3]->Fill(track.t0());
               meETLTrackRPTimeErr_[3]->Fill(track.t0Error());
+              meETLTrackRPBestTimeErr_[3]->Fill(sigmat0safe[trackref]);
               numMTDEtlvalidhits++;
             }
           }
@@ -269,8 +281,12 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
       // --- keeping only tracks with last hit in MTD ---
       if ((track.eta() < -trackMinEta_) && (track.eta() > -trackMaxEta_)) {
         if ((MTDEtlZnegD1 == true) || (MTDEtlZnegD2 == true)) {
-    edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
-    edm::LogWarning("globalReco") << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref] << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
+          if (sigmat0safe[trackref] > 0.0251) {
+            edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
+            edm::LogWarning("globalReco")
+                << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref]
+                << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
+          }
           meETLTrackEffEtaMtd_[0]->Fill(track.eta());
           meETLTrackEffPhiMtd_[0]->Fill(track.phi());
           meETLTrackEffPtMtd_[0]->Fill(track.pt());
@@ -278,8 +294,12 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
       }
       if ((track.eta() > trackMinEta_) && (track.eta() < trackMaxEta_)) {
         if ((MTDEtlZposD1 == true) || (MTDEtlZposD2 == true)) {
-    edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
-    edm::LogWarning("globalReco") << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref] << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
+          if (sigmat0safe[trackref] > 0.0251) {
+            edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
+            edm::LogWarning("globalReco")
+                << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref]
+                << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
+          }
           meETLTrackEffEtaMtd_[1]->Fill(track.eta());
           meETLTrackEffPhiMtd_[1]->Fill(track.phi());
           meETLTrackEffPtMtd_[1]->Fill(track.pt());
@@ -310,6 +330,8 @@ void MtdGlobalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
   // histogram booking
   meBTLTrackRPTime_ = ibook.book1D("TrackBTLRPTime", "Track t0 with respect to R.P.;t0 [ns]", 100, -1, 3);
   meBTLTrackRPTimeErr_ = ibook.book1D("TrackBTLRPTimeErr", "Track t0Error with respect to R.P.;t0 [ns]", 100, 0, 0.5);
+  meBTLTrackRPBestTimeErr_ =
+      ibook.book1D("TrackBTLRPBestTimeErr", "Track sigmat0safe with respect to R.P.;t0 [ns]", 100, 0, 0.5);
   meBTLTrackEffEtaTot_ = ibook.book1D("TrackBTLEffEtaTot", "Track efficiency vs eta (Tot);#eta_{RECO}", 100, -1.6, 1.6);
   meBTLTrackEffPhiTot_ =
       ibook.book1D("TrackBTLEffPhiTot", "Track efficiency vs phi (Tot);#phi_{RECO} [rad]", 100, -3.2, 3.2);
@@ -334,6 +356,14 @@ void MtdGlobalRecoValidation::bookHistograms(DQMStore::IBooker& ibook,
       "TrackETLRPTimeErrZposD1", "Track t0Error with respect to R.P. (+Z, First Disk);t0 [ns]", 100, 0, 0.5);
   meETLTrackRPTimeErr_[3] = ibook.book1D(
       "TrackETLRPTimeErrZposD2", "Track t0Error with respect to R.P. (+Z, Second Disk);t0 [ns]", 100, 0, 0.5);
+  meETLTrackRPBestTimeErr_[0] = ibook.book1D(
+      "TrackETLRPBestTimeErrZnegD1", "Track sigmat0safe with respect to R.P. (-Z, First Disk);t0 [ns]", 100, 0, 0.5);
+  meETLTrackRPBestTimeErr_[1] = ibook.book1D(
+      "TrackETLRPBestTimeErrZnegD2", "Track sigmat0safe with respect to R.P. (-Z, Second Disk);t0 [ns]", 100, 0, 0.5);
+  meETLTrackRPBestTimeErr_[2] = ibook.book1D(
+      "TrackETLRPBestTimeErrZposD1", "Track sigmat0safe with respect to R.P. (+Z, First Disk);t0 [ns]", 100, 0, 0.5);
+  meETLTrackRPBestTimeErr_[3] = ibook.book1D(
+      "TrackETLRPBestTimeErrZposD2", "Track sigmat0safe with respect to R.P. (+Z, Second Disk);t0 [ns]", 100, 0, 0.5);
   meETLTrackEffEtaTot_[0] =
       ibook.book1D("TrackETLEffEtaTotZneg", "Track efficiency vs eta (Tot) (-Z);#eta_{RECO}", 100, -3.2, -1.4);
   meETLTrackEffEtaTot_[1] =
@@ -373,7 +403,8 @@ void MtdGlobalRecoValidation::fillDescriptions(edm::ConfigurationDescriptions& d
   desc.add<edm::InputTag>("inputTagG", edm::InputTag("generalTracks", ""));
   desc.add<edm::InputTag>("inputTagT", edm::InputTag("trackExtenderWithMTD", ""));
   desc.add<edm::InputTag>("inputTagV", edm::InputTag("offlinePrimaryVertices4D", ""));
-  desc.add<edm::InputTag>("trackAssocSrc", edm::InputTag("trackExtenderWithMTD", "generalTrackassoc"))->setComment("Association between General and MTD Extended tracks");
+  desc.add<edm::InputTag>("trackAssocSrc", edm::InputTag("trackExtenderWithMTD", "generalTrackassoc"))
+      ->setComment("Association between General and MTD Extended tracks");
   desc.add<double>("trackMinimumEnergy", 1.0);  // [GeV]
   desc.add<double>("trackMinimumEta", 1.5);
   desc.add<double>("trackMaximumEta", 3.2);
