@@ -20,7 +20,9 @@
 #include "DataFormats/Common/interface/RefVector.h"
 
 #include "DataFormats/TrackReco/interface/Track.h"
+#include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/Common/interface/ValueMap.h"
 
 #include "Geometry/Records/interface/MTDDigiGeometryRecord.h"
 #include "Geometry/Records/interface/MTDTopologyRcd.h"
@@ -49,8 +51,20 @@ private:
   const float trackMinEta_;
   const float trackMaxEta_;
 
-  edm::EDGetTokenT<reco::TrackCollection> RecTrackToken_;
+  edm::EDGetTokenT<reco::TrackCollection> GenRecTrackToken_;
+  edm::EDGetTokenT<reco::TrackCollection> MTDRecTrackToken_;
   edm::EDGetTokenT<std::vector<reco::Vertex>> RecVertexToken_;
+
+  edm::EDGetTokenT<edm::ValueMap<int>> trackAssocToken_;
+
+  edm::EDGetTokenT<edm::ValueMap<float>> t0Token_;
+  edm::EDGetTokenT<edm::ValueMap<float>> sigmat0Token_;
+  edm::EDGetTokenT<edm::ValueMap<float>> t0safeToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> sigmat0safeToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> probPiToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> probKToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> probPToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> mtdQualMVAToken_;
 
   MonitorElement* meBTLTrackRPTime_;
   MonitorElement* meBTLTrackRPTimeErr_;
@@ -84,8 +98,18 @@ MtdGlobalRecoValidation::MtdGlobalRecoValidation(const edm::ParameterSet& iConfi
       trackMinEnergy_(iConfig.getParameter<double>("trackMinimumEnergy")),
       trackMinEta_(iConfig.getParameter<double>("trackMinimumEta")),
       trackMaxEta_(iConfig.getParameter<double>("trackMaximumEta")) {
-  RecTrackToken_ = consumes<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("inputTagT"));
+  GenRecTrackToken_ = consumes<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("inputTagG"));
+  MTDRecTrackToken_ = consumes<reco::TrackCollection>(iConfig.getParameter<edm::InputTag>("inputTagT"));
   RecVertexToken_ = consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("inputTagV"));
+  trackAssocToken_ = consumes<edm::ValueMap<int>>(iConfig.getParameter<edm::InputTag>("trackAssocSrc"));
+  t0Token_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("t0Src"));
+  sigmat0Token_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("sigmat0Src"));
+  t0safeToken_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("t0safeSrc"));
+  sigmat0safeToken_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("sigmat0safeSrc"));
+  probPiToken_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("probPiSrc"));
+  probKToken_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("probKSrc"));
+  probPToken_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("probPSrc"));
+  mtdQualMVAToken_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("mtdQualMVASrc"));
 }
 
 MtdGlobalRecoValidation::~MtdGlobalRecoValidation() {}
@@ -109,11 +133,34 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
     topo2Dis = true;
   }
 
-  auto RecTrackHandle = makeValid(iEvent.getHandle(RecTrackToken_));
+  auto GenRecTrackHandle = makeValid(iEvent.getHandle(GenRecTrackToken_));
+  //auto MTDRecTrackHandle = makeValid(iEvent.getHandle(MTDRecTrackToken_));
   auto RecVertexHandle = makeValid(iEvent.getHandle(RecVertexToken_));
 
+  const auto& trackAssoc = iEvent.get(trackAssocToken_);
+
+  const auto& t0 = iEvent.get(t0Token_);
+  const auto& sigmat0 = iEvent.get(sigmat0Token_);
+  const auto& t0safe = iEvent.get(t0safeToken_);
+  const auto& sigmat0safe = iEvent.get(sigmat0safeToken_);
+  const auto& probPi = iEvent.get(probPiToken_);
+  const auto& probK = iEvent.get(probKToken_);
+  const auto& probP = iEvent.get(probPToken_);
+  const auto& mtdQualMVA = iEvent.get(mtdQualMVAToken_);
+
+  unsigned int index = 0;
   // --- Loop over all RECO tracks ---
-  for (const auto& track : *RecTrackHandle) {
+  for (const auto& trackGen : *GenRecTrackHandle) {
+
+    const reco::TrackRef trackref(iEvent.getHandle(GenRecTrackToken_),index);
+    index++;
+
+    if (trackAssoc[trackref] == -1 ) { LogWarning("globalReco") << "Extended track not associated"; continue; }
+
+    const reco::TrackRef mtdTrackref = reco::TrackRef(iEvent.getHandle(MTDRecTrackToken_), trackAssoc[trackref]);
+    const reco::Track track = *mtdTrackref;
+
+
     if (track.pt() < trackMinEnergy_)
       continue;
 
@@ -138,6 +185,8 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
 
       // --- keeping only tracks with last hit in MTD ---
       if (MTDBtl == true) {
+    edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
+    edm::LogWarning("globalReco") << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref] << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
         meBTLTrackEffEtaMtd_->Fill(track.eta());
         meBTLTrackEffPhiMtd_->Fill(track.phi());
         meBTLTrackEffPtMtd_->Fill(track.pt());
@@ -220,6 +269,8 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
       // --- keeping only tracks with last hit in MTD ---
       if ((track.eta() < -trackMinEta_) && (track.eta() > -trackMaxEta_)) {
         if ((MTDEtlZnegD1 == true) || (MTDEtlZnegD2 == true)) {
+    edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
+    edm::LogWarning("globalReco") << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref] << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
           meETLTrackEffEtaMtd_[0]->Fill(track.eta());
           meETLTrackEffPhiMtd_[0]->Fill(track.phi());
           meETLTrackEffPtMtd_[0]->Fill(track.pt());
@@ -227,6 +278,8 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
       }
       if ((track.eta() > trackMinEta_) && (track.eta() < trackMaxEta_)) {
         if ((MTDEtlZposD1 == true) || (MTDEtlZposD2 == true)) {
+    edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
+    edm::LogWarning("globalReco") << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref] << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
           meETLTrackEffEtaMtd_[1]->Fill(track.eta());
           meETLTrackEffPhiMtd_[1]->Fill(track.phi());
           meETLTrackEffPtMtd_[1]->Fill(track.pt());
@@ -317,11 +370,21 @@ void MtdGlobalRecoValidation::fillDescriptions(edm::ConfigurationDescriptions& d
   edm::ParameterSetDescription desc;
 
   desc.add<std::string>("folder", "MTD/GlobalReco");
+  desc.add<edm::InputTag>("inputTagG", edm::InputTag("generalTracks", ""));
   desc.add<edm::InputTag>("inputTagT", edm::InputTag("trackExtenderWithMTD", ""));
   desc.add<edm::InputTag>("inputTagV", edm::InputTag("offlinePrimaryVertices4D", ""));
+  desc.add<edm::InputTag>("trackAssocSrc", edm::InputTag("trackExtenderWithMTD", "generalTrackassoc"))->setComment("Association between General and MTD Extended tracks");
   desc.add<double>("trackMinimumEnergy", 1.0);  // [GeV]
   desc.add<double>("trackMinimumEta", 1.5);
   desc.add<double>("trackMaximumEta", 3.2);
+  desc.add<edm::InputTag>("t0Src", edm::InputTag("tofPID", "t0"));
+  desc.add<edm::InputTag>("sigmat0Src", edm::InputTag("tofPID", "sigmat0"));
+  desc.add<edm::InputTag>("t0safeSrc", edm::InputTag("tofPID", "t0safe"));
+  desc.add<edm::InputTag>("sigmat0safeSrc", edm::InputTag("tofPID", "sigmat0safe"));
+  desc.add<edm::InputTag>("probPiSrc", edm::InputTag("tofPID", "probPi"));
+  desc.add<edm::InputTag>("probKSrc", edm::InputTag("tofPID", "probK"));
+  desc.add<edm::InputTag>("probPSrc", edm::InputTag("tofPID", "probP"));
+  desc.add<edm::InputTag>("mtdQualMVASrc", edm::InputTag("mtdTrackQualityMVA", "mtdQualMVA"));
 
   descriptions.add("globalReco", desc);
 }
