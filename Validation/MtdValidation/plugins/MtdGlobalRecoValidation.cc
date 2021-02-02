@@ -189,10 +189,11 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
       // --- keeping only tracks with last hit in MTD ---
       if (MTDBtl == true) {
         if (sigmat0safe[trackref] > 0.0251) {
-          edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
-          edm::LogWarning("globalReco") << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " "
-                                        << sigmat0safe[trackref] << " " << probPi[trackref] << " " << probK[trackref]
-                                        << " " << probP[trackref];
+          edm::LogWarning("globalReco") << "pt " << track.pt() << " genpt " << trackGen.pt() << " mva "
+                                        << mtdQualMVA[trackref] << " t0/st0/t0safe/st0safe " << t0[trackref] << " "
+                                        << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref]
+                                        << " prob(pi/K/p) " << probPi[trackref] << " " << probK[trackref] << " "
+                                        << probP[trackref];
         }
         meBTLTrackEffEtaMtd_->Fill(track.eta());
         meBTLTrackEffPhiMtd_->Fill(track.phi());
@@ -282,10 +283,11 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
       if ((track.eta() < -trackMinEta_) && (track.eta() > -trackMaxEta_)) {
         if ((MTDEtlZnegD1 == true) || (MTDEtlZnegD2 == true)) {
           if (sigmat0safe[trackref] > 0.0251) {
-            edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
             edm::LogWarning("globalReco")
-                << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref]
-                << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
+                << "pt " << track.pt() << " genpt " << trackGen.pt() << " mva " << mtdQualMVA[trackref]
+                << " t0/st0/t0safe/st0safe " << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref]
+                << " " << sigmat0safe[trackref] << " prob(pi/K/p) " << probPi[trackref] << " " << probK[trackref] << " "
+                << probP[trackref];
           }
           meETLTrackEffEtaMtd_[0]->Fill(track.eta());
           meETLTrackEffPhiMtd_[0]->Fill(track.phi());
@@ -295,10 +297,11 @@ void MtdGlobalRecoValidation::analyze(const edm::Event& iEvent, const edm::Event
       if ((track.eta() > trackMinEta_) && (track.eta() < trackMaxEta_)) {
         if ((MTDEtlZposD1 == true) || (MTDEtlZposD2 == true)) {
           if (sigmat0safe[trackref] > 0.0251) {
-            edm::LogWarning("globalReco") << track.pt() << " " << trackGen.pt() << " " << mtdQualMVA[trackref];
             edm::LogWarning("globalReco")
-                << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref] << " " << sigmat0safe[trackref]
-                << " " << probPi[trackref] << " " << probK[trackref] << " " << probP[trackref];
+                << "pt " << track.pt() << " genpt " << trackGen.pt() << " mva " << mtdQualMVA[trackref]
+                << " t0/st0/t0safe/st0safe " << t0[trackref] << " " << sigmat0[trackref] << " " << t0safe[trackref]
+                << " " << sigmat0safe[trackref] << " prob(pi/K/p) " << probPi[trackref] << " " << probK[trackref] << " "
+                << probP[trackref];
           }
           meETLTrackEffEtaMtd_[1]->Fill(track.eta());
           meETLTrackEffPhiMtd_[1]->Fill(track.phi());

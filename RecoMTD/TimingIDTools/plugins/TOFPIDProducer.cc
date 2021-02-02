@@ -15,6 +15,8 @@
 #include "CLHEP/Units/GlobalPhysicalConstants.h"
 #include "CLHEP/Units/GlobalSystemOfUnits.h"
 
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
+
 using namespace std;
 using namespace edm;
 
@@ -320,11 +322,21 @@ void TOFPIDProducer::produce(edm::Event& ev, const edm::EventSetup& es) {
         prob_k = rawprob_k * normprob;
         prob_p = rawprob_p * normprob;
 
+        if (sigmat0safe > 0.0251) {
+          edm::LogWarning("tofPID") << "case2: t0 = " << sigmat0safe << " tmtd = " << sigmatmtd << " prob = " << prob_pi
+                                    << " " << prob_k << " " << prob_p << " ichi2(K/p) = " << chisqmin_k << " "
+                                    << chisqmin_p << " dtsignom = " << dtsignom;
+        }
+
         double prob_heavy = 1. - prob_pi;
 
         if (prob_heavy > minProbHeavy_) {
           t0 = t0_best;
         }
+      }
+      if (prob_pi == -1.) {
+        edm::LogWarning("tofPID") << "case1: prob = " << prob_pi << " " << prob_k << " " << prob_p << " vtxidx "
+                                  << vtxidx;
       }
     }
 
