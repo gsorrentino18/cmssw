@@ -51,7 +51,7 @@
 #define verbose_ false
 #define use_only_charged_tracks_ true
 #define NOT_MATCHED 66666
-#define debug_ false
+#define debug_ true
 
 //class declaration
 class Primary4DVertexValidation : public DQMEDAnalyzer {
@@ -89,8 +89,8 @@ class Primary4DVertexValidation : public DQMEDAnalyzer {
     EncodedEventId eventId;
     TrackingVertexRef sim_vertex;
 
-    unsigned int nwosmatch;  // number of recvertices dominated by this simevt (by wos)
-    unsigned int nwntmatch;  // number of recvertices dominated by this simevt  (by nt)
+    unsigned int nwosmatch = 0;  // number of recvertices dominated by this simevt (by wos)
+    unsigned int nwntmatch = 0;  // number of recvertices dominated by this simevt  (by nt)
     std::vector<unsigned int> wos_dominated_recv;  // list of dominated recv (by wos, size==nwosmatch)
 
     std::map<unsigned int, double> wnt;     // weighted number of tracks in recvtx (by index)
@@ -121,7 +121,7 @@ class Primary4DVertexValidation : public DQMEDAnalyzer {
 
   // auxiliary class holding reconstructed vertices
   struct recoPrimaryVertex {
-    enum VertexProperties { NONE = 0, MATCHED = 1, DUPLICATE = 2, MERGED = 4 };
+    //enum VertexProperties { NONE = 0, MATCHED = 1, DUPLICATE = 2, MERGED = 4 };
     recoPrimaryVertex(double x1, double y1, double z1)
         : x(x1),
           y(y1),
@@ -187,6 +187,7 @@ public:
 private:
   void matchReco2Sim(std::vector<recoPrimaryVertex> &,
                              std::vector<simPrimaryVertex> &,
+                             const edm::ValueMap<float> &,
                              const edm::Handle<reco::BeamSpot>&);
   bool matchRecoTrack2SimSignal(const reco::TrackBaseRef &);
   bool matchRecoTrack2Sim(const reco::TrackBaseRef &, const TrackingVertexRef &);
@@ -210,9 +211,9 @@ private:
   edm::EDGetTokenT<reco::RecoToSimCollection> recoToSimAssociationToken_;
   edm::EDGetTokenT<reco::BeamSpot> RecBeamSpotToken_;
   edm::EDGetTokenT<edm::View<reco::Vertex>> Rec4DVerToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> Sigmat0SafePidToken_;
  
-  //histogram declaration
-  
+  //histogram declaration  
   MonitorElement* meTimeRes_;
   MonitorElement* meTimePull_;
 };
@@ -231,7 +232,8 @@ Primary4DVertexValidation::Primary4DVertexValidation(const edm::ParameterSet& iC
       recoToSimAssociationToken_ = 
           consumes<reco::RecoToSimCollection>(iConfig.getParameter<edm::InputTag>("TPtoRecoTrackAssoc")),
       RecBeamSpotToken_ = consumes<reco::BeamSpot>(iConfig.getParameter<edm::InputTag>("offlineBS")),
-      Rec4DVerToken_ = consumes<edm::View<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("offline4DPV"));
+      Rec4DVerToken_ = consumes<edm::View<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("offline4DPV")),
+      Sigmat0SafePidToken_ = consumes<edm::ValueMap<float>>(iConfig.getParameter<edm::InputTag>("sigmat0SafePID"));
 }
 
 Primary4DVertexValidation::~Primary4DVertexValidation() {}
@@ -250,6 +252,7 @@ void Primary4DVertexValidation::bookHistograms(DQMStore::IBooker& ibook,
    meTimeRes_ = ibook.book1D("TimeRes", "t_{rec} - t_{sim}; ", 200, -1., 1.);
    meTimePull_ = ibook.book1D("TimePull", "t_{rec} - t_{sim}/#sigma_{t rec}; ", 200, -10., 10.);
 }
+
 
 bool Primary4DVertexValidation::matchRecoTrack2SimSignal(const reco::TrackBaseRef& recoTrack) {
   auto found = r2s_->find(recoTrack);
@@ -476,6 +479,7 @@ std::vector<Primary4DVertexValidation::recoPrimaryVertex> Primary4DVertexValidat
 // ------------ method called to produce the data  ------------
 void Primary4DVertexValidation::matchReco2Sim(std::vector<recoPrimaryVertex>& recopv,
                                                             std::vector<simPrimaryVertex>& simpv,
+                                                            const edm::ValueMap<float>& ValueMap,
                                                             const edm::Handle<reco::BeamSpot>& BS) {
 
 
@@ -487,7 +491,7 @@ void Primary4DVertexValidation::matchReco2Sim(std::vector<recoPrimaryVertex>& re
     rv.wnt.clear();
     rv.wos.clear();
   }
-  
+
   for (unsigned int iv = 0; iv < recopv.size(); iv++) {
     const reco::Vertex* vertex = recopv.at(iv).recVtx;
  
@@ -509,10 +513,13 @@ void Primary4DVertexValidation::matchReco2Sim(std::vector<recoPrimaryVertex>& re
            double dz2 = pow((*iTrack)->dz(), 2) + dz2_beam + pow(0.0020, 2); // added 20 um, some tracks have crazy small resolutions
            wos = vertex->trackWeight(*iTrack)/dz2;
            wnt = vertex->trackWeight(*iTrack) * std::min(pt, 1.0);
-           if ((*iTrack)->covt0t0() > 0) { //FIXME
+
+           //std::cout << "Sigmat0Safe[*iTrack]: " << ValueMap[(*iTrack)] << std::endl;
+           //if ((*iTrack)->covt0t0() > 0) { //FIXME
+           if (ValueMap[(*iTrack)] > 0) {
              double sigmaZ = (*BS).sigmaZ();
              double sigmaT = sigmaZ / 2.998e1;  // c in cm/ns
-             wos = wos / erf(sqrt((*iTrack)->covt0t0())/sigmaT);
+             wos = wos / erf(ValueMap[(*iTrack)]/sigmaT);
            }
            simpv.at(iev).addTrack(iv, wos, wnt);
            recopv.at(iv).addTrack(iev, wos, wnt);
@@ -564,8 +571,11 @@ void Primary4DVertexValidation::matchReco2Sim(std::vector<recoPrimaryVertex>& re
   }
   //this tries a one-to-one match, taking simPV with highest wos if there are > 1 simPV candidates
   for (unsigned int rank = 1; rank < 8; rank++)  {
+      std::cout << "RANK: " << rank << std::endl;
 
       for (unsigned int iev = 0; iev < simpv.size(); iev++) { //loop on SimPV
+          std::cout << "*****iev: " << iev << std::endl;
+          std::cout << "simpv.at(iev).rec: " << simpv.at(iev).rec << std::endl;
 	  if (simpv.at(iev).rec != NOT_MATCHED) continue;
 	  if (simpv.at(iev).nwosmatch == 0) continue;
 	  if (simpv.at(iev).nwosmatch > rank) continue;
@@ -697,7 +707,7 @@ void Primary4DVertexValidation::analyze(const edm::Event& iEvent, const edm::Eve
   iEvent.getByToken(RecBeamSpotToken_, BeamSpotH);
   if (!BeamSpotH.isValid())
     edm::LogWarning("Primary4DVertexValidation") << "BeamSpotH is not valid";
-  
+
   std::vector<simPrimaryVertex> simpv;  // a list of simulated primary MC vertices
   simpv = getSimPVs(TVCollectionH);
   // TODO(rovere) 1 vertex is not, by definition, pileup, and should
@@ -716,6 +726,8 @@ void Primary4DVertexValidation::analyze(const edm::Event& iEvent, const edm::Eve
     edm::LogWarning("Primary4DVertexValidation") << "recVtxs is not valid";
   recopv = getRecoPVs(recVtxs);
 
+  const auto& Sigmat0Safe = iEvent.get(Sigmat0SafePidToken_);
+
   // check upfront that refs to track are (likely) to be valid
   /*bool ok = true;
   for (const auto& v : *recVtxs) {
@@ -730,7 +742,7 @@ void Primary4DVertexValidation::analyze(const edm::Event& iEvent, const edm::Eve
   */
 
   //I have simPV and recoPV collections 
-  matchReco2Sim(recopv, simpv, BeamSpotH);
+  matchReco2Sim(recopv, simpv, Sigmat0Safe, BeamSpotH);
 
   //fill histograms here in a new loop
   
@@ -773,6 +785,7 @@ void Primary4DVertexValidation::fillDescriptions(edm::ConfigurationDescriptions&
   desc.add<edm::InputTag>("SimTag", edm::InputTag("mix","MergedTrackTruth"));
   desc.add<edm::InputTag>("offlineBS", edm::InputTag("offlineBeamSpot"));
   desc.add<edm::InputTag>("offline4DPV", edm::InputTag("offlinePrimaryVertices4D"));
+  desc.add<edm::InputTag>("sigmat0SafePID", edm::InputTag("tofPID:sigmat0safe"));
 
   desc.add<double>("simUnit", 1e9); 
   descriptions.add("vertices4D", desc);
